@@ -283,7 +283,8 @@ final class ComponentExtensionTest extends KernelTestCase
     {
         $output = $this->renderComponent('NestedAttributes');
 
-        $this->assertSame(<<<HTML
+        $this->assertSame(
+            <<<HTML
             <main>
                 <div>
                     <span>
@@ -302,7 +303,8 @@ final class ComponentExtensionTest extends KernelTestCase
             'title:span:class' => 'baz',
         ]);
 
-        $this->assertSame(<<<HTML
+        $this->assertSame(
+            <<<HTML
             <main class="foo">
                 <div class="bar">
                     <span class="baz">
@@ -316,6 +318,58 @@ final class ComponentExtensionTest extends KernelTestCase
         );
     }
 
+    /**
+     * @dataProvider providePrefixedAttributesCases
+     */
+    public function testRenderPrefixedAttributes(string $attributes, bool $expectContains): void
+    {
+        /** @var Environment $twig */
+        $twig = self::getContainer()->get(Environment::class);
+        $template = $twig->createTemplate(\sprintf('<twig:PrefixedAttributes %s/>', $attributes));
+
+        if ($expectContains) {
+            self::assertStringContainsString($attributes, trim($template->render()));
+
+            return;
+        }
+
+        self::assertStringNotContainsString($attributes, trim($template->render()));
+    }
+
+    /**
+     * @return iterable<array{0: string, 1: bool}>
+     */
+    public static function providePrefixedAttributesCases(): iterable
+    {
+        // General
+        yield ['x:men', false]; // Nested
+        yield ['x:men="u"', false];  // Nested
+        yield ['x-men', true];
+        yield ['x-men="u"', true];
+
+        // AlpineJS
+        yield ['x-click="count++"', true];
+        yield ['x-on:click="count++"', true];
+        yield ['@click="open"', true];
+        // Not AlpineJS
+        yield ['z-click="count++"', true];
+        yield ['z-on:click="count++"', false]; // Nested
+
+        // Stencil
+        yield ['onClick="count++"', true];
+        yield ['@onClick="count++"', true];
+
+        // VueJs
+        yield ['v-model="message"', true];
+        yield ['v-bind:id="dynamicId"', true];
+        yield ['v-bind:id', true];
+        yield ['@submit.prevent="onSubmit"', true];
+        // Not VueJs
+        yield ['z-model="message"', true];
+        yield ['z-bind:id="dynamicId"', false]; // Nested
+        yield ['z-bind:id', false]; // Nested
+    }
+
     public function testRenderingHtmlSyntaxComponentWithNestedAttributes(): void
     {
         $output = self::getContainer()
@@ -324,7 +378,8 @@ final class ComponentExtensionTest extends KernelTestCase
             ->render()
         ;
 
-        $this->assertSame(<<<HTML
+        $this->assertSame(
+            <<<HTML
             <main>
                 <div>
                     <span>
@@ -343,7 +398,8 @@ final class ComponentExtensionTest extends KernelTestCase
             ->render()
         ;
 
-        $this->assertSame(<<<HTML
+        $this->assertSame(
+            <<<HTML
             <main class="foo" @class="vex">
                 <div class="bar">
                     <span class="baz">
@@ -369,7 +425,7 @@ final class ComponentExtensionTest extends KernelTestCase
     public function testComponentWithConflictBetweenPropsFromTemplateAndClass(): void
     {
         $this->expectException(RuntimeError::class);
-        $this->expectExceptionMessage('Cannot define prop "name" in template "components/Conflict.html.twig". Property already defined in component class "Symfony\UX\TwigComponent\Tests\Fixtures\Component\Conflict".');
+        $this->expectExceptionMessage('Cannot define prop "name" in template "components/Conflict.html.twig". Property already defined in component class "Symfony\UX\TwigComponent\Tests\Fixtures\Component\Conflict"');
 
         self::getContainer()->get(Environment::class)->render('component_with_conflict_between_props_from_template_and_class.html.twig');
     }
